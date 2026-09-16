@@ -16,7 +16,12 @@ class LocaleSwitch extends Component
 
     public function mount()
     {
-        $this->currentLocale = session('locale', config('app.locale'));
+        $locale = session('locale', config('app.locale'));
+        if (!array_key_exists($locale, config('app.available_locales', []))) {
+            $locale = config('app.locale');
+            session(['locale' => $locale]);
+        }
+        $this->currentLocale = $locale;
         $this->currentCurrency = session('currency', config('settings.default_currency'));
         $this->currencies = Currency::all()->map(fn ($currency) => [
             'value' => $currency->code,
@@ -51,7 +56,7 @@ class LocaleSwitch extends Component
 
     public function updatedCurrentLocale($locale)
     {
-        if (!in_array($locale, config('settings.allowed_languages', []))) {
+        if (!in_array($locale, config('settings.allowed_languages', [])) || !array_key_exists($locale, config('app.available_locales', []))) {
             $this->notify('The selected language is not available.', 'error');
 
             return;
