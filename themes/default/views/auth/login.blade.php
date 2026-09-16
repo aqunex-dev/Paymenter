@@ -23,7 +23,7 @@
 
     {!! hook('auth.login') !!}
 
-    @if (config('settings.oauth_github') || config('settings.oauth_google') || config('settings.oauth_discord'))
+    @if (config('settings.oauth_github') || config('settings.oauth_google') || config('settings.oauth_discord') || config('settings.oauth_oidc'))
     <div class="flex flex-col items-center mt-4">
         <div class="my-5 flex items-center w-full">
             <span aria-hidden="true" class="h-0.5 grow rounded bg-primary-700"></span>
@@ -43,6 +43,14 @@
             </a>
             @endif
             @endforeach
+            @if (config('settings.oauth_oidc'))
+            <a href="{{ route('oauth.redirect', 'oidc') }}"
+                class="flex items-center justify-center px-4 h-10 border border-neutral rounded-md text-primary-100">
+                {{-- Generic OIDC icon (remix icon) --}}
+                <i class="ri-shield-keyhole-line text-lg mr-2"></i>
+                {{ config('settings.oauth_oidc_label') ?: 'OpenID Connect' }}
+            </a>
+            @endif
         </div>
     </div>
     @endif

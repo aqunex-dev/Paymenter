@@ -65,6 +65,24 @@ class SettingsProvider extends ServiceProvider
             URL::forceRootUrl(config('app.url'));
 
             Config::set('filesystems.disks.public.url', config('app.url') . '/storage');
+
+            // OpenID Connect dynamic config: mirror DB settings into services / oidc so
+            // Socialite's drivers work both via `Socialite::driver('openidconnect')`
+            // and via `Socialite::driver('oidc_paymenter')`. The SocialLoginController
+            // uses buildProvider() directly, but this keeps the generic driver usable.
+            if (!empty(config('settings.oauth_oidc_base_url')) && !empty(config('settings.oauth_oidc_client_id'))) {
+                $oidcConfig = [
+                    'base_url' => config('settings.oauth_oidc_base_url'),
+                    'client_id' => config('settings.oauth_oidc_client_id'),
+                    'client_secret' => config('settings.oauth_oidc_client_secret'),
+                    'redirect' => '/oauth/oidc/callback',
+                    'scopes' => config('settings.oauth_oidc_scopes') ?: 'openid email profile',
+                ];
+                Config::set('services.openidconnect', $oidcConfig);
+                Config::set('oidc.connections.paymenter', $oidcConfig);
+                // Also expose as oidc driver alias for convenience
+                Config::set('services.oidc_paymenter', $oidcConfig);
+            }
         } catch (Exception $e) {
             // Do nothing
         }

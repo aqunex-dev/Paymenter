@@ -10,6 +10,7 @@ use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GithubProvider;
 use Laravel\Socialite\Two\GoogleProvider;
 use SocialiteProviders\Discord\Provider as DiscordProvider;
+use SocialiteProviders\OpenIDConnect\Provider as OIDCProvider;
 
 class SocialLoginController extends Controller
 {
@@ -40,6 +41,31 @@ class SocialLoginController extends Controller
         ]);
     }
 
+    protected function oidcDriver()
+    {
+        $clientId = config('settings.oauth_oidc_client_id');
+        $clientSecret = config('settings.oauth_oidc_client_secret');
+        $redirect = '/oauth/oidc/callback';
+        $baseUrl = config('settings.oauth_oidc_base_url');
+        $scopes = config('settings.oauth_oidc_scopes') ?: 'openid email profile';
+
+        $provider = Socialite::buildProvider(OIDCProvider::class, [
+            'client_id' => $clientId,
+            'client_secret' => $clientSecret,
+            'redirect' => $redirect,
+        ]);
+
+        // Socialite's buildProvider only passes client_id/secret/redirect/scopes.
+        // OIDC needs additional keys (base_url, scopes, etc.) via Manager's Config.
+        $config = new \SocialiteProviders\Manager\Config($clientId, $clientSecret, $redirect, [
+            'base_url' => $baseUrl,
+            'scopes' => $scopes,
+        ]);
+        $provider->setConfig($config);
+
+        return $provider;
+    }
+
     public function redirect($provider)
     {
         if (!config("settings.oauth_$provider")) {
@@ -50,6 +76,7 @@ class SocialLoginController extends Controller
             'discord' => $this->discord_driver->scopes(['email'])->redirect(),
             'github' => $this->github_driver->scopes(['user:email'])->redirect(),
             'google' => $this->google_driver->scopes(['email'])->redirect(),
+            'oidc' => $this->oidcDriver()->redirect(),
             default => abort(404)
         };
     }
@@ -77,6 +104,22 @@ class SocialLoginController extends Controller
             $oauth_user = $this->github_driver->user();
 
             return $this->findUserAndLogin($this->github_driver->user()->email);
+        } elseif ($provider == 'oidc') {
+            $oauth_user = $this->oidcDriver()->user();
+
+            $email = $oauth_user->getEmail();
+
+            if (!$email) {
+                return redirect()->route('login')->with('error', __('auth.oauth.no_email'));
+            }
+
+            // Optional: respect email_verified claim when present
+            $raw = $oauth_user->getRaw();
+            if (array_key_exists('email_verified', $raw) && !$raw['email_verified']) {
+                return redirect()->route('login')->with('error', __('auth.oauth.unverified_oidc_account'));
+            }
+
+            return $this->findUserAndLogin($email);
         } else {
             return redirect()->route('login');
         }

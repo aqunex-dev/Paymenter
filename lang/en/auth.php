@@ -37,7 +37,10 @@ return [
 
     'oauth' => [
         'unverified_discord_account' => 'Your Discord account is not verified.',
+        'unverified_google_account' => 'Your Google account email is not verified.',
+        'unverified_oidc_account' => 'Your OpenID Connect account email is not verified.',
         'account_not_registered' => 'You are not registered on this site.',
+        'no_email' => 'The provider did not return an email address. Please ensure the “email” scope is granted.',
     ],
 
     'reset_password' => 'Reset password',
